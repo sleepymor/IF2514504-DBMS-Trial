@@ -9,11 +9,11 @@ CREATE TABLE projects (
     start_date date NOT NULL,
     deadline date NOT NULL,
     status ENUM(
-        'PLANED',
+        'PLANNED',
         'ACTIVE',
         'COMPLETED',
         'CANCELLED'
-        ) NOT NULL DEFAULT 'PLANED',
+        ) NOT NULL DEFAULT 'PLANNED',
     created_at timestamp NOT NULL  DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp NOT NULL  DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
@@ -41,7 +41,7 @@ CREATE TABLE milestones (
                         ON DELETE CASCADE
 );
 
-CREATE TABLE task (
+CREATE TABLE tasks (
     id int AUTO_INCREMENT PRIMARY KEY,
     milestone_id INT NOT NULL,
     name varchar(150) NOT NULL,
@@ -80,6 +80,6 @@ CREATE TABLE activity_logs (
 
     CONSTRAINT fk_act_task
                            FOREIGN KEY (task_id)
-                           REFERENCES task(id)
+                           REFERENCES tasks(id)
                            ON DELETE CASCADE
 )

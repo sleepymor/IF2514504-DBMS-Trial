@@ -6,11 +6,6 @@ app = FastAPI(
     version="0.0.1"
 )
 
-
-@app.get("/")
-async def root():
-    return {"message": "Hello World"}
-
 app.include_router(projects.router)
 app.include_router(milestones.router)
 app.include_router(task.router)
@@ -20,6 +15,6 @@ app.include_router(report.router)
 @app.get("/")
 def root():
     return {
-        "message": "Project Management API",
-        "version": "1.0.0",
+        "message": "Bismillah MBD",
+        "version": "0.0.1",
     }
