@@ -21,6 +21,15 @@ CREATE TABLE projects (
                       CHECK ( deadline >= start_date )
 );
 
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    username varchar(50) NOT NULL UNIQUE,
+    email varchar(150) NOT NULL UNIQUE,
+    password_hash varchar(255) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE milestones (
     id int AUTO_INCREMENT PRIMARY KEY,
     project_id int NOT NULL,
@@ -43,6 +52,7 @@ CREATE TABLE milestones (
 
 CREATE TABLE tasks (
     id int AUTO_INCREMENT PRIMARY KEY,
+    assignee_id int,
     milestone_id INT NOT NULL,
     name varchar(150) NOT NULL,
     description text,
@@ -65,7 +75,12 @@ CREATE TABLE tasks (
     CONSTRAINT fk_task_mil
                   FOREIGN KEY  (milestone_id)
                   REFERENCES milestones(id)
-                  ON DELETE CASCADE
+                  ON DELETE CASCADE,
+
+    CONSTRAINT fk_task_assign
+                FOREIGN KEY (assignee_id)
+                REFERENCES users(id)
+                ON DELETE SET NULL
 );
 
 CREATE TABLE activity_logs (
