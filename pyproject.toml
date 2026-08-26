@@ -1,7 +1,7 @@
 [project]
 name = "bismillah-mbd"
 version = "0.1.0"
-description = "Add your description here"
+description = "Task Management System backend demonstrating Database Management concepts"
 readme = "README.md"
 authors = [
     { name = "Sleepy", email = "nemorzgm.05@gmail.com" }

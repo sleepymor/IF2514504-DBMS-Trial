@@ -27,6 +27,7 @@ CREATE TABLE users (
     username varchar(50) NOT NULL UNIQUE,
     email varchar(150) NOT NULL UNIQUE,
     password_hash varchar(255) NOT NULL,
+    preferences JSON NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -97,4 +98,4 @@ CREATE TABLE activity_logs (
                            FOREIGN KEY (task_id)
                            REFERENCES tasks(id)
                            ON DELETE CASCADE
-)
+);

@@ -6,7 +6,7 @@ services:
 
     environment:
       MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: project_management
+      MYSQL_DATABASE: TaskManager
       MYSQL_USER: app
       MYSQL_PASSWORD: app_password
 
