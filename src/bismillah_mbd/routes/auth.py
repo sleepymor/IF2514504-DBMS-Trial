@@ -53,12 +53,21 @@ def verify_password(password: str, stored: str) -> bool:
 
 
 def fetch_user(conn: MySQLConnection, user_id: int) -> dict:
-    with conn.cursor(dictionary=True) as cur:
-        cur.execute(
-            "SELECT id, username, email, preferences, created_at FROM users WHERE id = %s",
-            (user_id,),
-        )
-        user = cur.fetchone()
+    try:
+        with conn.cursor(dictionary=True) as cur:
+            cur.callproc("sp_get_user_by_id", (user_id,))
+            for result in cur.stored_results():
+                user = result.fetchone()
+                break
+            else:
+                user = None
+    except MySQLError as e:
+        if e.errno == 1305:
+            raise HTTPException(
+                status_code=501,
+                detail="sp_get_user_by_id does not exist yet - see src/bismillah_mbd/sql/procedures.sql",
+            ) from e
+        raise
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
     return user
@@ -68,26 +77,48 @@ def fetch_user(conn: MySQLConnection, user_id: int) -> dict:
 def register(payload: RegisterRequest, conn: MySQLConnection = Depends(get_db)):
     try:
         with conn.cursor() as cur:
-            cur.execute(
-                "INSERT INTO users (username, email, password_hash) VALUES (%s, %s, %s)",
-                (payload.username, payload.email, hash_password(payload.password)),
-            )
-            new_id = cur.lastrowid
+            cur.callproc("sp_create_user", (
+                payload.username,
+                payload.email,
+                hash_password(payload.password),
+            ))
+            for result in cur.stored_results():
+                row = result.fetchone()
+                if row:
+                    new_id = row[0]
+                    break
+            else:
+                new_id = cur.lastrowid
         conn.commit()
     except IntegrityError as e:
         raise HTTPException(status_code=409, detail="Username or email already taken") from e
+    except MySQLError as e:
+        if e.errno == 1305:
+            raise HTTPException(
+                status_code=501,
+                detail="sp_create_user does not exist yet - see src/bismillah_mbd/sql/procedures.sql",
+            ) from e
+        raise
     return fetch_user(conn, new_id)
 
 
 @router.post("/auth/login", response_model=UserResponse)
 def login(payload: LoginRequest, conn: MySQLConnection = Depends(get_db)):
-    with conn.cursor(dictionary=True) as cur:
-        cur.execute(
-            "SELECT id, username, email, password_hash, preferences, created_at "
-            "FROM users WHERE username = %s OR email = %s",
-            (payload.username, payload.username),
-        )
-        user = cur.fetchone()
+    try:
+        with conn.cursor(dictionary=True) as cur:
+            cur.callproc("sp_get_user_by_credentials", (payload.username,))
+            for result in cur.stored_results():
+                user = result.fetchone()
+                break
+            else:
+                user = None
+    except MySQLError as e:
+        if e.errno == 1305:
+            raise HTTPException(
+                status_code=501,
+                detail="sp_get_user_by_credentials does not exist yet - see src/bismillah_mbd/sql/procedures.sql",
+            ) from e
+        raise
     if user is None or not verify_password(payload.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     return {k: v for k, v in user.items() if k != "password_hash"}
@@ -101,10 +132,15 @@ def get_user(user_id: int, conn: MySQLConnection = Depends(get_db)):
 @router.put("/users/{user_id}/preferences", response_model=UserResponse)
 def set_preferences(user_id: int, preferences: dict, conn: MySQLConnection = Depends(get_db)):
     fetch_user(conn, user_id)
-    with conn.cursor() as cur:
-        cur.execute(
-            "UPDATE users SET preferences = %s WHERE id = %s",
-            (json.dumps(preferences), user_id),
-        )
-    conn.commit()
+    try:
+        with conn.cursor() as cur:
+            cur.callproc("sp_update_user_preferences", (user_id, json.dumps(preferences)))
+        conn.commit()
+    except MySQLError as e:
+        if e.errno == 1305:
+            raise HTTPException(
+                status_code=501,
+                detail="sp_update_user_preferences does not exist yet - see src/bismillah_mbd/sql/procedures.sql",
+            ) from e
+        raise
     return fetch_user(conn, user_id)

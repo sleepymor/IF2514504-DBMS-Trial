@@ -50,9 +50,21 @@ class ProjectWithMilestoneCreate(ProjectCreate):
 
 
 def fetch_project(conn: MySQLConnection, project_id: int) -> dict:
-    with conn.cursor(dictionary=True) as cur:
-        cur.execute("SELECT * FROM projects WHERE id = %s", (project_id,))
-        project = cur.fetchone()
+    try:
+        with conn.cursor(dictionary=True) as cur:
+            cur.callproc("sp_get_project_by_id", (project_id,))
+            for result in cur.stored_results():
+                project = result.fetchone()
+                break
+            else:
+                project = None
+    except MySQLError as e:
+        if e.errno == 1305:
+            raise HTTPException(
+                status_code=501,
+                detail="sp_get_project_by_id does not exist yet - see src/bismillah_mbd/sql/procedures.sql",
+            ) from e
+        raise
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found")
     return project
@@ -62,44 +74,87 @@ def fetch_project(conn: MySQLConnection, project_id: int) -> dict:
 def create_project(payload: ProjectCreate, conn: MySQLConnection = Depends(get_db)):
     try:
         with conn.cursor() as cur:
-            cur.execute(
-                "INSERT INTO projects (name, description, start_date, deadline, status) "
-                "VALUES (%s, %s, %s, %s, %s)",
-                (
-                    payload.name,
-                    payload.description,
-                    payload.start_date,
-                    payload.deadline,
-                    payload.status,
-                ),
-            )
-            new_id = cur.lastrowid
+            cur.callproc("sp_create_project", (
+                payload.name,
+                payload.description,
+                payload.start_date,
+                payload.deadline,
+                payload.status,
+            ))
+            for result in cur.stored_results():
+                row = result.fetchone()
+                if row:
+                    new_id = row[0]
+                    break
+            else:
+                new_id = cur.lastrowid
         conn.commit()
     except MySQLError as e:
         if e.errno == 3819:
             raise HTTPException(status_code=400, detail="Deadline cannot be before start date") from e
+        if e.errno == 1305:
+            raise HTTPException(
+                status_code=501,
+                detail="sp_create_project does not exist yet - see src/bismillah_mbd/sql/procedures.sql",
+            ) from e
         raise
     return fetch_project(conn, new_id)
 
 
-@router.post("/with-milestone", status_code=501)
+@router.post("/with-milestone", response_model=ProjectResponse, status_code=201)
 def create_project_with_milestone(
-    payload: "ProjectWithMilestoneCreate", conn: MySQLConnection = Depends(get_db)
+    payload: ProjectWithMilestoneCreate, conn: MySQLConnection = Depends(get_db)
 ):
-    raise HTTPException(
-        status_code=501,
-        detail=(
-            "To be implemented using MySQL transactions - "
-            "see docs/database-documentation/dbm-features.md"
-        ),
-    )
+    try:
+        with conn.cursor() as cur:
+            cur.callproc("sp_create_project_with_milestone", (
+                payload.name,
+                payload.description,
+                payload.start_date,
+                payload.deadline,
+                payload.status,
+                payload.milestone.name,
+                payload.milestone.description,
+                payload.milestone.deadline,
+                payload.milestone.status,
+            ))
+            for result in cur.stored_results():
+                row = result.fetchone()
+                if row:
+                    new_id = row[0]
+                    break
+            else:
+                new_id = cur.lastrowid
+        conn.commit()
+    except MySQLError as e:
+        if e.errno == 3819:
+            raise HTTPException(status_code=400, detail="Deadline cannot be before start date") from e
+        if e.errno == 1452:
+            raise HTTPException(status_code=404, detail="Project or milestone FK violation") from e
+        if e.errno == 1305:
+            raise HTTPException(
+                status_code=501,
+                detail="sp_create_project_with_milestone does not exist yet - see src/bismillah_mbd/sql/procedures.sql",
+            ) from e
+        raise
+    return fetch_project(conn, new_id)
 
 
 @router.get("/", response_model=list[ProjectResponse])
 def list_projects(conn: MySQLConnection = Depends(get_db)):
-    with conn.cursor(dictionary=True) as cur:
-        cur.execute("SELECT * FROM projects ORDER BY id")
-        return cur.fetchall()
+    try:
+        with conn.cursor(dictionary=True) as cur:
+            cur.callproc("sp_list_projects", ())
+            for result in cur.stored_results():
+                return result.fetchall()
+    except MySQLError as e:
+        if e.errno == 1305:
+            raise HTTPException(
+                status_code=501,
+                detail="sp_list_projects does not exist yet - see src/bismillah_mbd/sql/procedures.sql",
+            ) from e
+        raise
+    return []
 
 
 @router.get("/{project_id}", response_model=ProjectResponse)
@@ -115,17 +170,27 @@ def update_project(
     data = payload.model_dump(exclude_unset=True)
     if not data:
         raise HTTPException(status_code=400, detail="No fields to update")
-    assignments = ", ".join(f"{column} = %s" for column in data)
+    # Full update - get current values for missing fields
+    current = fetch_project(conn, project_id)
     try:
         with conn.cursor() as cur:
-            cur.execute(
-                f"UPDATE projects SET {assignments} WHERE id = %s",
-                (*data.values(), project_id),
-            )
+            cur.callproc("sp_update_project", (
+                project_id,
+                data.get("name", current["name"]),
+                data.get("description", current["description"]),
+                data.get("start_date", current["start_date"]),
+                data.get("deadline", current["deadline"]),
+                data.get("status", current["status"]),
+            ))
         conn.commit()
     except MySQLError as e:
         if e.errno == 3819:
             raise HTTPException(status_code=400, detail="Deadline cannot be before start date") from e
+        if e.errno == 1305:
+            raise HTTPException(
+                status_code=501,
+                detail="sp_update_project does not exist yet - see src/bismillah_mbd/sql/procedures.sql",
+            ) from e
         raise
     return fetch_project(conn, project_id)
 
@@ -133,6 +198,14 @@ def update_project(
 @router.delete("/{project_id}", status_code=204)
 def delete_project(project_id: int, conn: MySQLConnection = Depends(get_db)):
     fetch_project(conn, project_id)
-    with conn.cursor() as cur:
-        cur.execute("DELETE FROM projects WHERE id = %s", (project_id,))
-    conn.commit()
+    try:
+        with conn.cursor() as cur:
+            cur.callproc("sp_delete_project", (project_id,))
+        conn.commit()
+    except MySQLError as e:
+        if e.errno == 1305:
+            raise HTTPException(
+                status_code=501,
+                detail="sp_delete_project does not exist yet - see src/bismillah_mbd/sql/procedures.sql",
+            ) from e
+        raise

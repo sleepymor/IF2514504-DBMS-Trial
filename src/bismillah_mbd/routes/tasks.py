@@ -41,9 +41,21 @@ class TaskResponse(BaseModel):
 
 
 def fetch_task(conn: MySQLConnection, task_id: int) -> dict:
-    with conn.cursor(dictionary=True) as cur:
-        cur.execute("SELECT * FROM tasks WHERE id = %s", (task_id,))
-        task = cur.fetchone()
+    try:
+        with conn.cursor(dictionary=True) as cur:
+            cur.callproc("sp_get_task_by_id", (task_id,))
+            for result in cur.stored_results():
+                task = result.fetchone()
+                break
+            else:
+                task = None
+    except MySQLError as e:
+        if e.errno == 1305:
+            raise HTTPException(
+                status_code=501,
+                detail="sp_get_task_by_id does not exist yet - see src/bismillah_mbd/sql/procedures.sql",
+            ) from e
+        raise
     if task is None:
         raise HTTPException(status_code=404, detail="Task not found")
     return task
@@ -53,24 +65,31 @@ def fetch_task(conn: MySQLConnection, task_id: int) -> dict:
 def create_task(payload: TaskCreate, conn: MySQLConnection = Depends(get_db)):
     try:
         with conn.cursor() as cur:
-            cur.execute(
-                "INSERT INTO tasks (milestone_id, assignee_id, name, description, priority, deadline) "
-                "VALUES (%s, %s, %s, %s, %s, %s)",
-                (
-                    payload.milestone_id,
-                    payload.assignee_id,
-                    payload.name,
-                    payload.description,
-                    payload.priority,
-                    payload.deadline,
-                ),
-            )
-            new_id = cur.lastrowid
+            cur.callproc("sp_create_task", (
+                payload.milestone_id,
+                payload.assignee_id,
+                payload.name,
+                payload.description,
+                payload.priority,
+                payload.deadline,
+            ))
+            for result in cur.stored_results():
+                row = result.fetchone()
+                if row:
+                    new_id = row[0]
+                    break
+            else:
+                new_id = cur.lastrowid
         conn.commit()
     except MySQLError as e:
         if e.errno == 1452:
             raise HTTPException(
                 status_code=404, detail="Milestone or assignee not found"
+            ) from e
+        if e.errno == 1305:
+            raise HTTPException(
+                status_code=501,
+                detail="sp_create_task does not exist yet - see src/bismillah_mbd/sql/procedures.sql",
             ) from e
         raise
     return fetch_task(conn, new_id)
@@ -83,21 +102,19 @@ def list_tasks(
     status: Literal["TODO", "IN_PROGRESS", "COMPLETED", "CANCELLED"] | None = Query(default=None),
     conn: MySQLConnection = Depends(get_db),
 ):
-    filters = []
-    params = []
-    if milestone_id is not None:
-        filters.append("milestone_id = %s")
-        params.append(milestone_id)
-    if assignee_id is not None:
-        filters.append("assignee_id = %s")
-        params.append(assignee_id)
-    if status is not None:
-        filters.append("status = %s")
-        params.append(status)
-    where = f"WHERE {' AND '.join(filters)}" if filters else ""
-    with conn.cursor(dictionary=True) as cur:
-        cur.execute(f"SELECT * FROM tasks {where} ORDER BY id", tuple(params))
-        return cur.fetchall()
+    try:
+        with conn.cursor(dictionary=True) as cur:
+            cur.callproc("sp_list_tasks", (milestone_id, assignee_id, status))
+            for result in cur.stored_results():
+                return result.fetchall()
+    except MySQLError as e:
+        if e.errno == 1305:
+            raise HTTPException(
+                status_code=501,
+                detail="sp_list_tasks does not exist yet - see src/bismillah_mbd/sql/procedures.sql",
+            ) from e
+        raise
+    return []
 
 
 @router.get("/{task_id}", response_model=TaskResponse)
@@ -111,17 +128,28 @@ def update_task(task_id: int, payload: TaskUpdate, conn: MySQLConnection = Depen
     data = payload.model_dump(exclude_unset=True)
     if not data:
         raise HTTPException(status_code=400, detail="No fields to update")
-    assignments = ", ".join(f"{column} = %s" for column in data)
+    current = fetch_task(conn, task_id)
     try:
         with conn.cursor() as cur:
-            cur.execute(
-                f"UPDATE tasks SET {assignments} WHERE id = %s",
-                (*data.values(), task_id),
-            )
+            cur.callproc("sp_update_task", (
+                task_id,
+                data.get("milestone_id", current["milestone_id"]),
+                data.get("assignee_id", current["assignee_id"]),
+                data.get("name", current["name"]),
+                data.get("description", current["description"]),
+                data.get("priority", current["priority"]),
+                data.get("deadline", current["deadline"]),
+                data.get("status", current["status"]),
+            ))
         conn.commit()
     except MySQLError as e:
         if e.errno == 1452:
-            raise HTTPException(status_code=404, detail="Assignee not found") from e
+            raise HTTPException(status_code=404, detail="Assignee or milestone not found") from e
+        if e.errno == 1305:
+            raise HTTPException(
+                status_code=501,
+                detail="sp_update_task does not exist yet - see src/bismillah_mbd/sql/procedures.sql",
+            ) from e
         raise
     return fetch_task(conn, task_id)
 
@@ -129,9 +157,21 @@ def update_task(task_id: int, payload: TaskUpdate, conn: MySQLConnection = Depen
 @router.post("/{task_id}/start", response_model=TaskResponse)
 def start_task(task_id: int, conn: MySQLConnection = Depends(get_db)):
     fetch_task(conn, task_id)
-    with conn.cursor() as cur:
-        cur.execute("UPDATE tasks SET status = 'IN_PROGRESS' WHERE id = %s", (task_id,))
-    conn.commit()
+    try:
+        with conn.cursor() as cur:
+            cur.callproc("sp_update_task_status", (
+                task_id,
+                'IN_PROGRESS',
+                'start'
+            ))
+        conn.commit()
+    except MySQLError as e:
+        if e.errno == 1305:
+            raise HTTPException(
+                status_code=501,
+                detail="sp_update_task_status does not exist yet - see src/bismillah_mbd/sql/procedures.sql",
+            ) from e
+        raise
     return fetch_task(conn, task_id)
 
 
@@ -155,15 +195,35 @@ def complete_task(task_id: int, conn: MySQLConnection = Depends(get_db)):
 @router.post("/{task_id}/cancel", response_model=TaskResponse)
 def cancel_task(task_id: int, conn: MySQLConnection = Depends(get_db)):
     fetch_task(conn, task_id)
-    with conn.cursor() as cur:
-        cur.execute("UPDATE tasks SET status = 'CANCELLED' WHERE id = %s", (task_id,))
-    conn.commit()
+    try:
+        with conn.cursor() as cur:
+            cur.callproc("sp_update_task_status", (
+                task_id,
+                'CANCELLED',
+                'cancel'
+            ))
+        conn.commit()
+    except MySQLError as e:
+        if e.errno == 1305:
+            raise HTTPException(
+                status_code=501,
+                detail="sp_update_task_status does not exist yet - see src/bismillah_mbd/sql/procedures.sql",
+            ) from e
+        raise
     return fetch_task(conn, task_id)
 
 
 @router.delete("/{task_id}", status_code=204)
 def delete_task(task_id: int, conn: MySQLConnection = Depends(get_db)):
     fetch_task(conn, task_id)
-    with conn.cursor() as cur:
-        cur.execute("DELETE FROM tasks WHERE id = %s", (task_id,))
-    conn.commit()
+    try:
+        with conn.cursor() as cur:
+            cur.callproc("sp_delete_task", (task_id,))
+        conn.commit()
+    except MySQLError as e:
+        if e.errno == 1305:
+            raise HTTPException(
+                status_code=501,
+                detail="sp_delete_task does not exist yet - see src/bismillah_mbd/sql/procedures.sql",
+            ) from e
+        raise
