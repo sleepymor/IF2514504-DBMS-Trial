@@ -4,7 +4,7 @@ import secrets
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
-from mysql.connector import IntegrityError, MySQLConnection
+from mysql.connector import Error as MySQLError, IntegrityError, MySQLConnection
 from pydantic import BaseModel, EmailStr, Field
 
 from bismillah_mbd.database import get_db

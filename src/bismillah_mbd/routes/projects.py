@@ -143,15 +143,17 @@ def create_project_with_milestone(
 @router.get("/", response_model=list[ProjectResponse])
 def list_projects(conn: MySQLConnection = Depends(get_db)):
     try:
-        with conn.cursor(dictionary=True) as cur:
-            cur.callproc("sp_list_projects", ())
-            for result in cur.stored_results():
-                return result.fetchall()
+        with conn.cursor(dictionary=True) as cur: 
+            cur.execute("""
+                SELECT id, name, description, start_date, deadline, status, created_at, updated_at
+                FROM v_projects
+            """)
+            return cur.fetchall()
     except MySQLError as e:
-        if e.errno == 1305:
+        if e.errno == 1146:
             raise HTTPException(
                 status_code=501,
-                detail="sp_list_projects does not exist yet - see src/bismillah_mbd/sql/procedures.sql",
+                detail="v_projects view does not exist yet - see src/bismillah_mbd/sql/views.sql",
             ) from e
         raise
     return []

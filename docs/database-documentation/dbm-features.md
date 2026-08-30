@@ -15,41 +15,8 @@ integration works. Until an object exists, its endpoint returns HTTP 501.
 - Session vars: none
 - API note: results returned as-is (`SELECT *`), ordered by `id`
 
-### `v_project_by_id`
-- Consumed by: `GET /projects/{project_id}`
-- Purpose: return single project by ID
-- Session vars: `@p_project_id INT` — set before SELECT
-- API note: returns NULL if not found → API maps to 404
-
-### `v_milestones`
-- Consumed by: `GET /milestones/`
-- Purpose: return milestones, optionally filtered by project
-- Session vars: `@p_project_id INT` — NULL = all projects
-- API note: results ordered by `id`
-
-### `v_milestone_by_id`
-- Consumed by: `GET /milestones/{milestone_id}`
-- Purpose: return single milestone by ID
-- Session vars: `@p_milestone_id INT`
-- API note: returns NULL if not found → API maps to 404
-
-### `v_tasks`
-- Consumed by: `GET /tasks/`
-- Purpose: return tasks with optional filters
-- Session vars:
-  - `@p_milestone_id INT` — NULL = all
-  - `@p_assignee_id INT` — NULL = all
-  - `@p_status VARCHAR(30)` — NULL = all
-- API note: results ordered by `id`
-
-### `v_task_by_id`
-- Consumed by: `GET /tasks/{task_id}`
-- Purpose: return single task by ID
-- Session vars: `@p_task_id INT`
-- API note: returns NULL if not found → API maps to 404
-
 ### `v_overdue_tasks`
-- Consumed by: `GET /reports/tasks/overdue` (alternative: `sp_list_overdue_tasks`)
+- Consumed by: `GET /reports/tasks/overdue`
 - Purpose: rows for tasks whose deadline has passed and which are not
   finished/cancelled. Should expose enough context to be readable on its own
   (at minimum task identity plus its project/milestone context).
@@ -57,7 +24,7 @@ integration works. Until an object exists, its endpoint returns HTTP 501.
 - API note: results returned as-is, ordered by `deadline`
 
 ### `v_assignee_workload`
-- Consumed by: `GET /reports/workload` (alternative: `sp_list_assignee_workload`)
+- Consumed by: `GET /reports/workload`
 - Purpose: one row per user who is assigned tasks, aggregating their current
   workload (e.g., how many open tasks they carry). Must include an
   `assignee_id` column; users with zero open tasks may or may not appear.
@@ -116,7 +83,7 @@ integration works. Until an object exists, its endpoint returns HTTP 501.
 - Purpose: mark a task as COMPLETED as an encapsulated database operation.
 - Implementation: CALLs `sp_update_task_status(p_task_id, 'COMPLETED', 'complete')`.
 
-### READ Operations (8)
+### READ Operations (10)
 
 #### `sp_get_user_by_id(p_user_id INT)`
 - Consumed by: `GET /users/{user_id}`
@@ -134,24 +101,15 @@ integration works. Until an object exists, its endpoint returns HTTP 501.
 - Returns: all project columns
 - Returns NULL if not found → API maps to 404
 
-#### `sp_list_projects()`
-- Consumed by: `GET /projects/`
-- Returns: all projects ordered by id
-
-#### `sp_get_milestone_by_id(p_milestone_id INT)`
-- Consumed by: `GET /milestones/{milestone_id}`
-- Returns: all milestone columns
-- Returns NULL if not found → API maps to 404
-
 #### `sp_list_milestones(p_project_id INT)`
 - Consumed by: `GET /milestones/` (optional query param project_id)
 - If p_project_id is NULL: returns all milestones
 - If p_project_id provided: filters by project_id
 - Returns ordered by id
 
-#### `sp_get_task_by_id(p_task_id INT)`
-- Consumed by: `GET /tasks/{task_id}`
-- Returns: all task columns
+#### `sp_get_milestone_by_id(p_milestone_id INT)`
+- Consumed by: `GET /milestones/{milestone_id}`
+- Returns: all milestone columns
 - Returns NULL if not found → API maps to 404
 
 #### `sp_list_tasks(p_milestone_id INT, p_assignee_id INT, p_status VARCHAR(30))`
@@ -159,7 +117,10 @@ integration works. Until an object exists, its endpoint returns HTTP 501.
 - All parameters nullable; NULL means no filter
 - Returns filtered tasks ordered by id
 
-### REPORT Operations (4)
+#### `sp_get_task_by_id(p_task_id INT)`
+- Consumed by: `GET /tasks/{task_id}`
+- Returns: all task columns
+- Returns NULL if not found → API maps to 404
 
 #### `sp_get_project_progress(p_project_id INT, OUT p_progress DECIMAL(5,2))`
 - Consumed by: `GET /reports/projects/{project_id}/progress`
@@ -175,18 +136,23 @@ integration works. Until an object exists, its endpoint returns HTTP 501.
 - Unknown milestone id: returns NULL → API maps to 404.
 - Implementation: count tasks in milestone; compute completed/total * 100.
 
-#### `sp_list_overdue_tasks()`
-- Consumed by: `GET /reports/tasks/overdue`
-- Purpose: return all tasks past deadline that are not COMPLETED or CANCELLED.
-- Returns: result set with task columns + project/milestone context (task_id, name, status, deadline, priority, milestone_id, milestone_name, project_id, project_name, assignee_id).
-- Ordered by `deadline`.
+### REPORT Operations (2) — Functions
 
-#### `sp_list_assignee_workload()`
-- Consumed by: `GET /reports/workload`
-- Purpose: return workload per assignee (open tasks + overdue count).
-- Returns: result set with assignee_id, assignee_username, assignee_email, open_task_count, overdue_task_count.
-- Only includes users with open_task_count > 0.
-- Ordered by `assignee_id`.
+#### `fn_get_project_progress(p_project_id INT)` RETURNS `DECIMAL(5,2)`
+- Consumed by: `GET /reports/projects/{project_id}/progress`
+- Purpose: calculate project completion percentage.
+- Returns: `DECIMAL(5,2)` (0-100), or NULL if project has no tasks.
+- Unknown project id: returns NULL → API maps to 404.
+- Implementation: count tasks in project's milestones; compute completed/total * 100.
+
+#### `fn_get_milestone_progress(p_milestone_id INT)` RETURNS `DECIMAL(5,2)`
+- Consumed by: `GET /reports/milestones/{milestone_id}/progress`
+- Purpose: calculate milestone completion percentage.
+- Returns: `DECIMAL(5,2)` (0-100), or NULL if milestone has no tasks.
+- Unknown milestone id: returns NULL → API maps to 404.
+- Implementation: count tasks in milestone; compute completed/total * 100.
+
+> **Note**: `GET /reports/tasks/overdue` and `GET /reports/workload` use views (`v_overdue_tasks`, `v_assignee_workload`) instead of stored procedures since they accept no parameters.
 
 ### UPDATE Operations (3) — Full UPDATE (all fields)
 
