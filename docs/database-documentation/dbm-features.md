@@ -49,7 +49,7 @@ integration works. Until an object exists, its endpoint returns HTTP 501.
 - API note: returns NULL if not found → API maps to 404
 
 ### `v_overdue_tasks`
-- Consumed by: `GET /reports/tasks/overdue`
+- Consumed by: `GET /reports/tasks/overdue` (alternative: `sp_list_overdue_tasks`)
 - Purpose: rows for tasks whose deadline has passed and which are not
   finished/cancelled. Should expose enough context to be readable on its own
   (at minimum task identity plus its project/milestone context).
@@ -57,28 +57,13 @@ integration works. Until an object exists, its endpoint returns HTTP 501.
 - API note: results returned as-is, ordered by `deadline`
 
 ### `v_assignee_workload`
-- Consumed by: `GET /reports/workload`
+- Consumed by: `GET /reports/workload` (alternative: `sp_list_assignee_workload`)
 - Purpose: one row per user who is assigned tasks, aggregating their current
   workload (e.g., how many open tasks they carry). Must include an
   `assignee_id` column; users with zero open tasks may or may not appear.
 - Session vars: none
 - Suggested columns: assignee_id, assignee_username, assignee_email, open_task_count, overdue_task_count
 - API note: returned as-is
-
----
-
-## Functions (`sql/functions.sql`)
-
-### `fn_project_progress(p_project_id INT) RETURNS DECIMAL(5,2)`
-- Consumed by: `GET /reports/projects/{project_id}/progress`
-- Returns: percentage 0–100 of completed tasks in the project.
-- Edge cases: no tasks → decide between NULL and 0 and be consistent.
-- Unknown project id: returning NULL makes the API answer 404.
-
-### `fn_milestone_progress(p_milestone_id INT) RETURNS DECIMAL(5,2)`
-- Consumed by: `GET /reports/milestones/{milestone_id}/progress`
-- Same semantics as above but scoped to one milestone's tasks.
-- Unknown milestone id: returning NULL makes the API answer 404.
 
 ---
 
@@ -173,6 +158,35 @@ integration works. Until an object exists, its endpoint returns HTTP 501.
 - Consumed by: `GET /tasks/` (optional query params)
 - All parameters nullable; NULL means no filter
 - Returns filtered tasks ordered by id
+
+### REPORT Operations (4)
+
+#### `sp_get_project_progress(p_project_id INT, OUT p_progress DECIMAL(5,2))`
+- Consumed by: `GET /reports/projects/{project_id}/progress`
+- Purpose: calculate project completion percentage.
+- Returns: OUT parameter `p_progress` as DECIMAL(5,2) (0-100), or NULL if project has no tasks.
+- Unknown project id: returns NULL → API maps to 404.
+- Implementation: count tasks in project's milestones; compute completed/total * 100.
+
+#### `sp_get_milestone_progress(p_milestone_id INT, OUT p_progress DECIMAL(5,2))`
+- Consumed by: `GET /reports/milestones/{milestone_id}/progress`
+- Purpose: calculate milestone completion percentage.
+- Returns: OUT parameter `p_progress` as DECIMAL(5,2) (0-100), or NULL if milestone has no tasks.
+- Unknown milestone id: returns NULL → API maps to 404.
+- Implementation: count tasks in milestone; compute completed/total * 100.
+
+#### `sp_list_overdue_tasks()`
+- Consumed by: `GET /reports/tasks/overdue`
+- Purpose: return all tasks past deadline that are not COMPLETED or CANCELLED.
+- Returns: result set with task columns + project/milestone context (task_id, name, status, deadline, priority, milestone_id, milestone_name, project_id, project_name, assignee_id).
+- Ordered by `deadline`.
+
+#### `sp_list_assignee_workload()`
+- Consumed by: `GET /reports/workload`
+- Purpose: return workload per assignee (open tasks + overdue count).
+- Returns: result set with assignee_id, assignee_username, assignee_email, open_task_count, overdue_task_count.
+- Only includes users with open_task_count > 0.
+- Ordered by `assignee_id`.
 
 ### UPDATE Operations (3) — Full UPDATE (all fields)
 
