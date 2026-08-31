@@ -43,6 +43,7 @@ class MilestoneInline(BaseModel):
     name: str = Field(min_length=1, max_length=150)
     description: str | None = None
     deadline: date
+    status: Literal["PENDING", "IN_PROGRESS", "COMPLETED"] = "PENDING"
 
 
 class ProjectWithMilestoneCreate(ProjectCreate):
@@ -74,20 +75,16 @@ def fetch_project(conn: MySQLConnection, project_id: int) -> dict:
 def create_project(payload: ProjectCreate, conn: MySQLConnection = Depends(get_db)):
     try:
         with conn.cursor() as cur:
-            cur.callproc("sp_create_project", (
+            args = (
                 payload.name,
                 payload.description,
                 payload.start_date,
                 payload.deadline,
                 payload.status,
-            ))
-            for result in cur.stored_results():
-                row = result.fetchone()
-                if row:
-                    new_id = row[0]
-                    break
-            else:
-                new_id = cur.lastrowid
+                0,
+            )
+            result = cur.callproc("sp_create_project", args)
+            new_id = result[5]
         conn.commit()
     except MySQLError as e:
         if e.errno == 3819:
@@ -107,7 +104,7 @@ def create_project_with_milestone(
 ):
     try:
         with conn.cursor() as cur:
-            cur.callproc("sp_create_project_with_milestone", (
+            args = (
                 payload.name,
                 payload.description,
                 payload.start_date,
@@ -117,14 +114,11 @@ def create_project_with_milestone(
                 payload.milestone.description,
                 payload.milestone.deadline,
                 payload.milestone.status,
-            ))
-            for result in cur.stored_results():
-                row = result.fetchone()
-                if row:
-                    new_id = row[0]
-                    break
-            else:
-                new_id = cur.lastrowid
+                0,
+                0,
+            )
+            result = cur.callproc("sp_create_project_with_milestone", args)
+            new_id = result[9]
         conn.commit()
     except MySQLError as e:
         if e.errno == 3819:

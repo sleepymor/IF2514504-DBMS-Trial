@@ -1,8 +1,10 @@
 USE TaskManager;
 
+DELIMITER //
+
 -- Scalar Function: fn_get_project_progress
 -- Calculates project completion percentage based on task status
-DROP FUNCTION IF EXISTS fn_get_project_progress;
+DROP FUNCTION IF EXISTS fn_get_project_progress//
 CREATE FUNCTION fn_get_project_progress(p_project_id INT)
 RETURNS DECIMAL(5,2)
 READS SQL DATA
@@ -26,11 +28,11 @@ BEGIN
     WHERE m.project_id = p_project_id AND t.status = 'COMPLETED';
 
     RETURN ROUND((v_completed / v_total) * 100, 2);
-END;
+END//
 
 -- Scalar Function: fn_get_milestone_progress
 -- Calculates milestone completion percentage based on task status
-DROP FUNCTION IF EXISTS fn_get_milestone_progress;
+DROP FUNCTION IF EXISTS fn_get_milestone_progress//
 CREATE FUNCTION fn_get_milestone_progress(p_milestone_id INT)
 RETURNS DECIMAL(5,2)
 READS SQL DATA
@@ -50,4 +52,6 @@ BEGIN
     WHERE milestone_id = p_milestone_id AND status = 'COMPLETED';
 
     RETURN ROUND((v_completed / v_total) * 100, 2);
-END;
+END//
+
+DELIMITER ;

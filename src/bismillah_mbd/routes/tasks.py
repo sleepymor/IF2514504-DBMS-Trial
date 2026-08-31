@@ -65,21 +65,17 @@ def fetch_task(conn: MySQLConnection, task_id: int) -> dict:
 def create_task(payload: TaskCreate, conn: MySQLConnection = Depends(get_db)):
     try:
         with conn.cursor() as cur:
-            cur.callproc("sp_create_task", (
+            args = (
                 payload.milestone_id,
                 payload.assignee_id,
                 payload.name,
                 payload.description,
                 payload.priority,
                 payload.deadline,
-            ))
-            for result in cur.stored_results():
-                row = result.fetchone()
-                if row:
-                    new_id = row[0]
-                    break
-            else:
-                new_id = cur.lastrowid
+                0,
+            )
+            result = cur.callproc("sp_create_task", args)
+            new_id = result[6]
         conn.commit()
     except MySQLError as e:
         if e.errno == 1452:

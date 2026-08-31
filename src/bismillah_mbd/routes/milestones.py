@@ -63,20 +63,16 @@ def fetch_milestone(conn: MySQLConnection, milestone_id: int) -> dict:
 def create_milestone(payload: MilestoneCreate, conn: MySQLConnection = Depends(get_db)):
     try:
         with conn.cursor() as cur:
-            cur.callproc("sp_create_milestone", (
+            args = (
                 payload.project_id,
                 payload.name,
                 payload.description,
                 payload.deadline,
                 payload.status,
-            ))
-            for result in cur.stored_results():
-                row = result.fetchone()
-                if row:
-                    new_id = row[0]
-                    break
-            else:
-                new_id = cur.lastrowid
+                0,
+            )
+            result = cur.callproc("sp_create_milestone", args)
+            new_id = result[5]
         conn.commit()
     except MySQLError as e:
         if e.errno == 1452:

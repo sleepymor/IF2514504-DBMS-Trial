@@ -77,18 +77,14 @@ def fetch_user(conn: MySQLConnection, user_id: int) -> dict:
 def register(payload: RegisterRequest, conn: MySQLConnection = Depends(get_db)):
     try:
         with conn.cursor() as cur:
-            cur.callproc("sp_create_user", (
+            args = (
                 payload.username,
                 payload.email,
                 hash_password(payload.password),
-            ))
-            for result in cur.stored_results():
-                row = result.fetchone()
-                if row:
-                    new_id = row[0]
-                    break
-            else:
-                new_id = cur.lastrowid
+                0,
+            )
+            result = cur.callproc("sp_create_user", args)
+            new_id = result[3]
         conn.commit()
     except IntegrityError as e:
         raise HTTPException(status_code=409, detail="Username or email already taken") from e
