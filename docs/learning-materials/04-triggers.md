@@ -65,7 +65,7 @@ END;
 
 ## 3. Project Implementation: `trg_task_status_audit`
 
-**File:** `src/bismillah_mbd/sql/triggers.sql`
+**File:** `src/bismillah_mbd/sql/04-triggers.sql`
 
 ```sql
 DROP TRIGGER IF EXISTS trg_task_status_audit;

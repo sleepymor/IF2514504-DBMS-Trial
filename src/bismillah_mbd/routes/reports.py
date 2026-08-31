@@ -10,7 +10,7 @@ def translate_reporting_error(e: MySQLError) -> HTTPException:
     if e.errno == 1305:
         return HTTPException(
             status_code=501,
-            detail="Database procedure not created yet - see src/bismillah_mbd/sql/procedures.sql",
+            detail="Database procedure not created yet - see src/bismillah_mbd/sql/03-procedures.sql",
         )
     return HTTPException(status_code=500, detail=e.msg)
 
@@ -25,7 +25,7 @@ def project_progress(project_id: int, conn: MySQLConnection = Depends(get_db)):
         if e.errno == 1305:
             raise HTTPException(
                 status_code=501,
-                detail="fn_get_project_progress function does not exist yet - see src/bismillah_mbd/sql/procedures.sql",
+                detail="fn_get_project_progress function does not exist yet - see src/bismillah_mbd/sql/03-procedures.sql",
             ) from e
         raise
     if row is None or row[0] is None:
@@ -43,7 +43,7 @@ def milestone_progress(milestone_id: int, conn: MySQLConnection = Depends(get_db
         if e.errno == 1305:
             raise HTTPException(
                 status_code=501,
-                detail="fn_get_milestone_progress function does not exist yet - see src/bismillah_mbd/sql/procedures.sql",
+                detail="fn_get_milestone_progress function does not exist yet - see src/bismillah_mbd/sql/03-procedures.sql",
             ) from e
         raise
     if row is None or row[0] is None:
@@ -64,7 +64,7 @@ def overdue_tasks(conn: MySQLConnection = Depends(get_db)):
         if e.errno == 1146:
             raise HTTPException(
                 status_code=501,
-                detail="v_overdue_tasks view does not exist yet - see src/bismillah_mbd/sql/views.sql",
+                detail="v_overdue_tasks view does not exist yet - see src/bismillah_mbd/sql/05-views.sql",
             ) from e
         raise
     return []
@@ -83,7 +83,7 @@ def assignee_workload(conn: MySQLConnection = Depends(get_db)):
         if e.errno == 1146:
             raise HTTPException(
                 status_code=501,
-                detail="v_assignee_workload view does not exist yet - see src/bismillah_mbd/sql/views.sql",
+                detail="v_assignee_workload view does not exist yet - see src/bismillah_mbd/sql/05-views.sql",
             ) from e
         raise
     return []

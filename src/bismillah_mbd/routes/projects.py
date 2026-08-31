@@ -62,7 +62,7 @@ def fetch_project(conn: MySQLConnection, project_id: int) -> dict:
         if e.errno == 1305:
             raise HTTPException(
                 status_code=501,
-                detail="sp_get_project_by_id does not exist yet - see src/bismillah_mbd/sql/procedures.sql",
+                detail="sp_get_project_by_id does not exist yet - see src/bismillah_mbd/sql/03-procedures.sql",
             ) from e
         raise
     if project is None:
@@ -95,7 +95,7 @@ def create_project(payload: ProjectCreate, conn: MySQLConnection = Depends(get_d
         if e.errno == 1305:
             raise HTTPException(
                 status_code=501,
-                detail="sp_create_project does not exist yet - see src/bismillah_mbd/sql/procedures.sql",
+                detail="sp_create_project does not exist yet - see src/bismillah_mbd/sql/03-procedures.sql",
             ) from e
         raise
     return fetch_project(conn, new_id)
@@ -134,7 +134,7 @@ def create_project_with_milestone(
         if e.errno == 1305:
             raise HTTPException(
                 status_code=501,
-                detail="sp_create_project_with_milestone does not exist yet - see src/bismillah_mbd/sql/procedures.sql",
+                detail="sp_create_project_with_milestone does not exist yet - see src/bismillah_mbd/sql/03-procedures.sql",
             ) from e
         raise
     return fetch_project(conn, new_id)
@@ -153,7 +153,7 @@ def list_projects(conn: MySQLConnection = Depends(get_db)):
         if e.errno == 1146:
             raise HTTPException(
                 status_code=501,
-                detail="v_projects view does not exist yet - see src/bismillah_mbd/sql/views.sql",
+                detail="v_projects view does not exist yet - see src/bismillah_mbd/sql/05-views.sql",
             ) from e
         raise
     return []
@@ -191,7 +191,7 @@ def update_project(
         if e.errno == 1305:
             raise HTTPException(
                 status_code=501,
-                detail="sp_update_project does not exist yet - see src/bismillah_mbd/sql/procedures.sql",
+                detail="sp_update_project does not exist yet - see src/bismillah_mbd/sql/03-procedures.sql",
             ) from e
         raise
     return fetch_project(conn, project_id)
@@ -208,6 +208,6 @@ def delete_project(project_id: int, conn: MySQLConnection = Depends(get_db)):
         if e.errno == 1305:
             raise HTTPException(
                 status_code=501,
-                detail="sp_delete_project does not exist yet - see src/bismillah_mbd/sql/procedures.sql",
+                detail="sp_delete_project does not exist yet - see src/bismillah_mbd/sql/03-procedures.sql",
             ) from e
         raise

@@ -104,7 +104,7 @@ SELECT SHA2(CONCAT('salt', 'password'), 256);  -- Manual salt
 
 ### 2.2 Project Implementation: `users.preferences`
 
-**Schema:** `src/bismillah_mbd/sql/schema.sql` (line 30)
+**Schema:** `src/bismillah_mbd/sql/01-schema.sql` (line 30)
 ```sql
 preferences JSON NULL
 ```
@@ -150,7 +150,7 @@ def set_preferences(user_id: int, preferences: dict, conn: MySQLConnection = Dep
     return fetch_user(conn, user_id)
 ```
 
-**Procedure:** `src/bismillah_mbd/sql/procedures.sql`
+**Procedure:** `src/bismillah_mbd/sql/03-procedures.sql`
 ```sql
 CREATE PROCEDURE sp_update_user_preferences(IN p_user_id INT, IN p_preferences JSON)
 BEGIN

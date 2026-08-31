@@ -54,7 +54,7 @@ FROM table_name
 
 ### 3.1 `v_projects` — All Projects Listing
 
-**File:** `src/bismillah_mbd/sql/views.sql` (lines 6–16)  
+**File:** `src/bismillah_mbd/sql/05-views.sql` (lines 6–16)  
 **Consumed by:** `GET /projects/` → `routes/projects.py`
 
 ```sql
@@ -81,7 +81,7 @@ ORDER BY id;
 
 ### 3.2 `v_overdue_tasks` — Overdue Tasks with Context
 
-**File:** `src/bismillah_mbd/sql/views.sql` (lines 22–38)  
+**File:** `src/bismillah_mbd/sql/05-views.sql` (lines 22–38)  
 **Consumed by:** `GET /reports/tasks/overdue` → `routes/reports.py`
 
 ```sql
@@ -114,7 +114,7 @@ ORDER BY t.deadline;
 
 ### 3.3 `v_assignee_workload` — Aggregated Assignee Workload
 
-**File:** `src/bismillah_mbd/sql/views.sql` (lines 45–56)  
+**File:** `src/bismillah_mbd/sql/05-views.sql` (lines 45–56)  
 **Consumed by:** `GET /reports/workload` → `routes/reports.py`
 
 ```sql

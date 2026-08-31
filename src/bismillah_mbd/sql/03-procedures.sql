@@ -198,7 +198,7 @@ BEGIN
     ORDER BY id;
 END;
 
--- REPORT Operations (moved to functions.sql)
+-- REPORT Operations (moved to 02-functions.sql)
 
 -- UPDATE Operations
 

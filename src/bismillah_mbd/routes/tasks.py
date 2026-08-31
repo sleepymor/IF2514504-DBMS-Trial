@@ -53,7 +53,7 @@ def fetch_task(conn: MySQLConnection, task_id: int) -> dict:
         if e.errno == 1305:
             raise HTTPException(
                 status_code=501,
-                detail="sp_get_task_by_id does not exist yet - see src/bismillah_mbd/sql/procedures.sql",
+                detail="sp_get_task_by_id does not exist yet - see src/bismillah_mbd/sql/03-procedures.sql",
             ) from e
         raise
     if task is None:
@@ -89,7 +89,7 @@ def create_task(payload: TaskCreate, conn: MySQLConnection = Depends(get_db)):
         if e.errno == 1305:
             raise HTTPException(
                 status_code=501,
-                detail="sp_create_task does not exist yet - see src/bismillah_mbd/sql/procedures.sql",
+                detail="sp_create_task does not exist yet - see src/bismillah_mbd/sql/03-procedures.sql",
             ) from e
         raise
     return fetch_task(conn, new_id)
@@ -111,7 +111,7 @@ def list_tasks(
         if e.errno == 1305:
             raise HTTPException(
                 status_code=501,
-                detail="sp_list_tasks does not exist yet - see src/bismillah_mbd/sql/procedures.sql",
+                detail="sp_list_tasks does not exist yet - see src/bismillah_mbd/sql/03-procedures.sql",
             ) from e
         raise
     return []
@@ -148,7 +148,7 @@ def update_task(task_id: int, payload: TaskUpdate, conn: MySQLConnection = Depen
         if e.errno == 1305:
             raise HTTPException(
                 status_code=501,
-                detail="sp_update_task does not exist yet - see src/bismillah_mbd/sql/procedures.sql",
+                detail="sp_update_task does not exist yet - see src/bismillah_mbd/sql/03-procedures.sql",
             ) from e
         raise
     return fetch_task(conn, task_id)
@@ -169,7 +169,7 @@ def start_task(task_id: int, conn: MySQLConnection = Depends(get_db)):
         if e.errno == 1305:
             raise HTTPException(
                 status_code=501,
-                detail="sp_update_task_status does not exist yet - see src/bismillah_mbd/sql/procedures.sql",
+                detail="sp_update_task_status does not exist yet - see src/bismillah_mbd/sql/03-procedures.sql",
             ) from e
         raise
     return fetch_task(conn, task_id)
@@ -186,7 +186,7 @@ def complete_task(task_id: int, conn: MySQLConnection = Depends(get_db)):
         if e.errno == 1305:
             raise HTTPException(
                 status_code=501,
-                detail="sp_complete_task does not exist yet - see src/bismillah_mbd/sql/procedures.sql",
+                detail="sp_complete_task does not exist yet - see src/bismillah_mbd/sql/03-procedures.sql",
             ) from e
         raise
     return fetch_task(conn, task_id)
@@ -207,7 +207,7 @@ def cancel_task(task_id: int, conn: MySQLConnection = Depends(get_db)):
         if e.errno == 1305:
             raise HTTPException(
                 status_code=501,
-                detail="sp_update_task_status does not exist yet - see src/bismillah_mbd/sql/procedures.sql",
+                detail="sp_update_task_status does not exist yet - see src/bismillah_mbd/sql/03-procedures.sql",
             ) from e
         raise
     return fetch_task(conn, task_id)
@@ -224,6 +224,6 @@ def delete_task(task_id: int, conn: MySQLConnection = Depends(get_db)):
         if e.errno == 1305:
             raise HTTPException(
                 status_code=501,
-                detail="sp_delete_task does not exist yet - see src/bismillah_mbd/sql/procedures.sql",
+                detail="sp_delete_task does not exist yet - see src/bismillah_mbd/sql/03-procedures.sql",
             ) from e
         raise

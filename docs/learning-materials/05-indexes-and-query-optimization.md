@@ -55,7 +55,7 @@ InnoDB uses **B+Tree** for all indexes:
 
 ## 3. Project Implementation: Index Catalog
 
-**File:** `src/bismillah_mbd/sql/indexes.sql`
+**File:** `src/bismillah_mbd/sql/06-indexes.sql`
 
 ### 3.1 Single-Column Indexes
 
@@ -290,12 +290,13 @@ WHERE TABLE_SCHEMA = 'TaskManager' AND TABLE_NAME = 'tasks';
 ## 9. Architecture.md Load Order Rationale
 
 ```
-1. schema.sql      -- Tables, PKs (clustered indexes created)
-2. functions.sql   -- Scalar functions
-3. procedures.sql  -- Stored procedures
-4. triggers.sql    -- AFTER triggers (depend on tables)
-5. views.sql       -- Views (may reference functions)
-6. indexes.sql     -- Secondary indexes LAST
+1. 01-schema.sql      -- Tables, PKs (clustered indexes created)
+2. 02-functions.sql   -- Scalar functions
+3. 03-procedures.sql  -- Stored procedures
+4. 04-triggers.sql    -- AFTER triggers (depend on tables)
+5. 05-views.sql       -- Views (may reference functions)
+6. 06-indexes.sql     -- Secondary indexes LAST
+7. 07-seeder.sql      -- Optional test data
 ```
 
 **Why indexes last?**

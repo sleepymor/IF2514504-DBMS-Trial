@@ -51,7 +51,7 @@ def fetch_milestone(conn: MySQLConnection, milestone_id: int) -> dict:
         if e.errno == 1305:
             raise HTTPException(
                 status_code=501,
-                detail="sp_get_milestone_by_id does not exist yet - see src/bismillah_mbd/sql/procedures.sql",
+                detail="sp_get_milestone_by_id does not exist yet - see src/bismillah_mbd/sql/03-procedures.sql",
             ) from e
         raise
     if milestone is None:
@@ -84,7 +84,7 @@ def create_milestone(payload: MilestoneCreate, conn: MySQLConnection = Depends(g
         if e.errno == 1305:
             raise HTTPException(
                 status_code=501,
-                detail="sp_create_milestone does not exist yet - see src/bismillah_mbd/sql/procedures.sql",
+                detail="sp_create_milestone does not exist yet - see src/bismillah_mbd/sql/03-procedures.sql",
             ) from e
         raise
     return fetch_milestone(conn, new_id)
@@ -104,7 +104,7 @@ def list_milestones(
         if e.errno == 1305:
             raise HTTPException(
                 status_code=501,
-                detail="sp_list_milestones does not exist yet - see src/bismillah_mbd/sql/procedures.sql",
+                detail="sp_list_milestones does not exist yet - see src/bismillah_mbd/sql/03-procedures.sql",
             ) from e
         raise
     return []
@@ -138,7 +138,7 @@ def update_milestone(
         if e.errno == 1305:
             raise HTTPException(
                 status_code=501,
-                detail="sp_update_milestone does not exist yet - see src/bismillah_mbd/sql/procedures.sql",
+                detail="sp_update_milestone does not exist yet - see src/bismillah_mbd/sql/03-procedures.sql",
             ) from e
         raise
     return fetch_milestone(conn, milestone_id)
@@ -155,6 +155,6 @@ def delete_milestone(milestone_id: int, conn: MySQLConnection = Depends(get_db))
         if e.errno == 1305:
             raise HTTPException(
                 status_code=501,
-                detail="sp_delete_milestone does not exist yet - see src/bismillah_mbd/sql/procedures.sql",
+                detail="sp_delete_milestone does not exist yet - see src/bismillah_mbd/sql/03-procedures.sql",
             ) from e
         raise

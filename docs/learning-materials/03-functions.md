@@ -49,7 +49,7 @@ END;
 
 ### 2.1 `fn_get_project_progress`
 
-**File:** `src/bismillah_mbd/sql/functions.sql` (lines 6–30)
+**File:** `src/bismillah_mbd/sql/02-functions.sql` (lines 6–30)
 
 ```sql
 CREATE FUNCTION fn_get_project_progress(p_project_id INT)
@@ -89,7 +89,7 @@ END;
 
 ### 2.2 `fn_get_milestone_progress`
 
-**File:** `src/bismillah_mbd/sql/functions.sql` (lines 33–56)
+**File:** `src/bismillah_mbd/sql/02-functions.sql` (lines 33–56)
 
 ```sql
 CREATE FUNCTION fn_get_milestone_progress(p_milestone_id INT)

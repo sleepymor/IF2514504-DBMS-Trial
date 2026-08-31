@@ -44,12 +44,13 @@ Defined in `src/bismillah_mbd/sql/schema.sql`:
 
 Execute in this order (later files may depend on earlier ones):
 
-1. `schema.sql`
-2. `functions.sql`
-3. `procedures.sql`
-4. `triggers.sql`
-5. `views.sql`
-6. `indexes.sql`
+1. `01-schema.sql`
+2. `02-functions.sql`
+3. `03-procedures.sql`
+4. `04-triggers.sql`
+5. `05-views.sql`
+6. `06-indexes.sql`
+7. `07-seeder.sql` (optional test data)
 
 Views are loaded after functions because a view may call a function;
 triggers come before views/indexes because indexes are best created after
@@ -59,7 +60,7 @@ Example (from a repo root shell):
 
 ```bash
 docker compose up -d
-docker exec -i project-management-mysql mysql -uroot -proot < src/bismillah_mbd/sql/schema.sql
+docker exec -i project-management-mysql mysql -uroot -proot < src/bismillah_mbd/sql/01-schema.sql
 # repeat for each file in the order above
 ```
 

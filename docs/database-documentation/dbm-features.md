@@ -7,7 +7,7 @@ integration works. Until an object exists, its endpoint returns HTTP 501.
 
 ---
 
-## Views (`sql/views.sql`)
+## Views (`sql/05-views.sql`)
 
 ### `v_projects`
 - Consumed by: `GET /projects/`
@@ -34,7 +34,7 @@ integration works. Until an object exists, its endpoint returns HTTP 501.
 
 ---
 
-## Procedures (`sql/procedures.sql`)
+## Procedures (`sql/03-procedures.sql`)
 
 ### CREATE Operations (7)
 
@@ -199,7 +199,7 @@ integration works. Until an object exists, its endpoint returns HTTP 501.
 
 ---
 
-## Triggers (`sql/triggers.sql`)
+## Triggers (`sql/04-triggers.sql`)
 
 ### `trg_task_status_audit`
 - Timing: AFTER UPDATE
@@ -234,7 +234,7 @@ integration works. Until an object exists, its endpoint returns HTTP 501.
 
 ## JSON (`users.preferences`, Sub-CPMK-6)
 
-- Column: `users.preferences JSON NULL` (already in `schema.sql`).
+- Column: `users.preferences JSON NULL` (already in `01-schema.sql`).
 - Wired endpoints:
   - `PUT /users/{user_id}/preferences` stores an arbitrary JSON object (whole-blob write).
   - `GET /users/{id}` returns it.
@@ -244,7 +244,7 @@ integration works. Until an object exists, its endpoint returns HTTP 501.
 
 ---
 
-## Indexes (`sql/indexes.sql`, Sub-CPMK-3/4)
+## Indexes (`sql/06-indexes.sql`, Sub-CPMK-3/4)
 
 No indexes beyond PKs/FKs exist yet — deliberately. Process:
 

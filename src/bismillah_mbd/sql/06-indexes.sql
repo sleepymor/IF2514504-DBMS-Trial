@@ -62,7 +62,7 @@ CREATE INDEX idx_projects_status ON projects (status);
 
 -- Index for user lookup by username/email (authentication)
 -- UNIQUE constraints already create implicit indexes on username and email
--- (See schema.sql: UNIQUE on username, email)
+-- (See 01-schema.sql: UNIQUE on username, email)
 
 -- ============================================================
 -- ACTIVITY_LOGS TABLE INDEXES
