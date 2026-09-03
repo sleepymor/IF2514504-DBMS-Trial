@@ -1,12 +1,12 @@
 USE TaskManager;
 
 -- Seed Users
-INSERT INTO users (username, email, password_hash, preferences) VALUES
-('john_doe', 'john@example.com', '$2y$10$dummyhash1', '{"theme": "dark", "notifications": true}'),
-('jane_smith', 'jane@example.com', '$2y$10$dummyhash2', '{"theme": "light", "notifications": false}'),
-('bob_wilson', 'bob@example.com', '$2y$10$dummyhash3', '{"theme": "system", "notifications": true}'),
-('alice_jones', 'alice@example.com', '$2y$10$dummyhash4', '{"theme": "dark", "notifications": true}'),
-('charlie_brown', 'charlie@example.com', '$2y$10$dummyhash5', '{"theme": "light", "notifications": true}');
+INSERT INTO users (username, email, password_hash) VALUES
+('john_doe', 'john@example.com', '$2y$10$dummyhash1'),
+('jane_smith', 'jane@example.com', '$2y$10$dummyhash2'),
+('bob_wilson', 'bob@example.com', '$2y$10$dummyhash3'),
+('alice_jones', 'alice@example.com', '$2y$10$dummyhash4'),
+('charlie_brown', 'charlie@example.com', '$2y$10$dummyhash5');
 
 -- Seed Projects
 INSERT INTO projects (name, description, start_date, deadline, status) VALUES

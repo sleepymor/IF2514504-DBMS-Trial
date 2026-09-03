@@ -1,36 +1,16 @@
 import hashlib
-import json
 import secrets
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from mysql.connector import Error as MySQLError, IntegrityError, MySQLConnection
-from pydantic import BaseModel, EmailStr, Field
 
 from bismillah_mbd.database import get_db
+from bismillah_mbd.schemas import LoginRequest, RegisterRequest, UserResponse
 
 router = APIRouter(tags=["Auth"])
 
 PBKDF2_ITERATIONS = 120_000
-
-
-class RegisterRequest(BaseModel):
-    username: str = Field(min_length=3, max_length=50)
-    email: EmailStr
-    password: str = Field(min_length=8)
-
-
-class LoginRequest(BaseModel):
-    username: str
-    password: str
-
-
-class UserResponse(BaseModel):
-    id: int
-    username: str
-    email: str
-    preferences: dict | None
-    created_at: datetime
 
 
 def hash_password(password: str) -> str:
@@ -122,21 +102,4 @@ def login(payload: LoginRequest, conn: MySQLConnection = Depends(get_db)):
 
 @router.get("/users/{user_id}", response_model=UserResponse)
 def get_user(user_id: int, conn: MySQLConnection = Depends(get_db)):
-    return fetch_user(conn, user_id)
-
-
-@router.put("/users/{user_id}/preferences", response_model=UserResponse)
-def set_preferences(user_id: int, preferences: dict, conn: MySQLConnection = Depends(get_db)):
-    fetch_user(conn, user_id)
-    try:
-        with conn.cursor() as cur:
-            cur.callproc("sp_update_user_preferences", (user_id, json.dumps(preferences)))
-        conn.commit()
-    except MySQLError as e:
-        if e.errno == 1305:
-            raise HTTPException(
-                status_code=501,
-                detail="sp_update_user_preferences does not exist yet - see src/bismillah_mbd/sql/03-procedures.sql",
-            ) from e
-        raise
     return fetch_user(conn, user_id)

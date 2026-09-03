@@ -16,20 +16,11 @@ Requirements: Docker, [uv](https://docs.astral.sh/uv/).
 
 ```bash
 cp .env.example .env          # connection settings used by the API
-docker compose up -d          # start MySQL 8.4 (database TaskManager)
+docker compose up -d          # start MySQL 8.4 (database TaskManager) — auto-runs all SQL migrations
 uv sync                       # install Python dependencies
 ```
 
-Load the SQL files in order (later files may depend on earlier ones):
-
-```bash
-docker exec -i project-management-mysql mysql -uroot -proot < src/bismillah_mbd/sql/schema.sql
-docker exec -i project-management-mysql mysql -uroot -proot < src/bismillah_mbd/sql/functions.sql
-docker exec -i project-management-mysql mysql -uroot -proot < src/bismillah_mbd/sql/procedures.sql
-docker exec -i project-management-mysql mysql -uroot -proot < src/bismillah_mbd/sql/triggers.sql
-docker exec -i project-management-mysql mysql -uroot -proot < src/bismillah_mbd/sql/views.sql
-docker exec -i project-management-mysql mysql -uroot -proot < src/bismillah_mbd/sql/indexes.sql
-```
+> **Note:** All SQL migrations (`01-schema.sql` through `08-user-access.sql`) are baked into the custom Docker image and run automatically on first container start. No manual SQL loading required.
 
 Run the API:
 
@@ -41,25 +32,30 @@ uv run fastapi dev
 
 Interactive API docs: http://127.0.0.1:8000/docs
 
-## API overview
+## Database User Permissions (Least Privilege)
+
+The `app` database user is restricted to **execute stored procedures/functions** and **select from views** only — no direct table access (SELECT/INSERT/UPDATE/DELETE on tables is revoked). See `src/bismillah_mbd/sql/08-user-access.sql` and `docs/database-documentation/architecture.md`.
+
+## API Overview
 
 | Area | Endpoints |
 |---|---|
 | Auth | `POST /auth/register`, `POST /auth/login`, `GET /users/{id}`, `PUT /users/{id}/preferences` |
-| Manage Project | CRUD under `POST/GET/PUT/DELETE /projects` |
-| Plan Project | CRUD under `/milestones`, task creation/update under `/tasks` |
-| Execute Tasks | `POST /tasks/{id}/start`, `/complete` (calls `sp_complete_task`), `/cancel` |
+| Manage Project | CRUD under `POST/GET/PUT/DELETE /projects`, `POST /projects/with-milestone/create` (project + first milestone atomically) |
+| Plan Project | `POST /projects/{project_id}/milestone/create`, CRUD under `/milestones`, task creation under `/milestones/{milestone_id}/tasks/create` |
+| Execute Tasks | `POST /tasks/{id}/start`, `/complete` (calls `sp_complete_task`), `/cancel`, `PUT /tasks/{id}/update` |
 | Monitor Project | `GET /reports/projects/{id}/progress`, `GET /reports/milestones/{id}/progress`, `GET /reports/tasks/overdue`, `GET /reports/workload` |
 
 Endpoints that depend on student-written database objects return HTTP 501
 until those objects are created; see `dbm-features.md`.
 
-## Project layout
+## Project Layout
 
 ```
 src/bismillah_mbd/
 ├── main.py            FastAPI app + entrypoint
 ├── database.py        connection management (mysql.connector)
+├── schemas.py         shared Pydantic models (Create/Update/Response)
 ├── routes/            thin HTTP layer (auth, projects, milestones, tasks, reports)
-└── sql/               schema + DBM feature SQL (views/functions/procedures/triggers/indexes)
+└── sql/               schema + DBM feature SQL (views/functions/procedures/triggers/indexes/permissions)
 ```

@@ -1,13 +1,5 @@
 USE TaskManager;
 
--- Secondary Indexes (B+Tree) for Query Optimization
--- Created after schema, functions, procedures, triggers, and views
--- Based on actual query patterns from API endpoints
-
--- ============================================================
--- TASKS TABLE INDEXES
--- ============================================================
-
 -- Index for filtering tasks by assignee (GET /tasks/?assignee_id=X)
 -- Used by: sp_list_tasks, v_tasks view
 CREATE INDEX idx_tasks_assignee_id ON tasks (assignee_id);
@@ -36,9 +28,6 @@ CREATE INDEX idx_tasks_assignee_status ON tasks (assignee_id, status);
 -- Used by: v_overdue_tasks, v_assignee_workload
 CREATE INDEX idx_tasks_deadline_status ON tasks (deadline, status);
 
--- ============================================================
--- MILESTONES TABLE INDEXES
--- ============================================================
 
 -- Index for filtering milestones by project (GET /milestones/?project_id=X)
 -- Used by: sp_list_milestones, v_milestones view
@@ -48,25 +37,11 @@ CREATE INDEX idx_milestones_project_id ON milestones (project_id);
 -- Used by: milestone status queries
 CREATE INDEX idx_milestones_status ON milestones (status);
 
--- ============================================================
--- PROJECTS TABLE INDEXES
--- ============================================================
 
 -- Index for project status filtering
 -- Used by: project listing and filtering
 CREATE INDEX idx_projects_status ON projects (status);
 
--- ============================================================
--- USERS TABLE INDEXES
--- ============================================================
-
--- Index for user lookup by username/email (authentication)
--- UNIQUE constraints already create implicit indexes on username and email
--- (See 01-schema.sql: UNIQUE on username, email)
-
--- ============================================================
--- ACTIVITY_LOGS TABLE INDEXES
--- ============================================================
 
 -- Index for querying activity logs by task
 -- Used by: task audit trail queries

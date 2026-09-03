@@ -58,13 +58,13 @@ integration works. Until an object exists, its endpoint returns HTTP 501.
 - OUT parameters: project ID and milestone ID.
 
 #### `sp_create_milestone(p_project_id INT, p_name VARCHAR(150), p_description TEXT, p_deadline DATE, p_status ENUM, OUT p_milestone_id INT)`
-- Consumed by: `POST /milestones/`
+- Consumed by: `POST /projects/{project_id}/milestone/create`
 - Purpose: create a new milestone as an encapsulated database operation.
 - Parameters: project_id and all milestone fields; OUT parameter returns the new milestone ID.
 - Error handling: foreign key violation (project not found) bubbles up as MySQL errno 1452 → API returns 404.
 
 #### `sp_create_task(p_milestone_id INT, p_assignee_id INT, p_name VARCHAR(150), p_description TEXT, p_priority ENUM, p_deadline DATE, OUT p_task_id INT)`
-- Consumed by: `POST /tasks/`
+- Consumed by: `POST /milestones/{milestone_id}/tasks/create`
 - Purpose: create a new task as an encapsulated database operation.
 - Parameters: all task fields from TaskCreate payload; OUT parameter returns the new task ID.
 - Error handling: foreign key violations (milestone/assignee not found) bubble up as MySQL errno 1452 → API returns 404.
@@ -98,19 +98,25 @@ integration works. Until an object exists, its endpoint returns HTTP 501.
 
 #### `sp_get_project_by_id(p_project_id INT)`
 - Consumed by: `GET /projects/{project_id}`
-- Returns: all project columns
-- Returns NULL if not found → API maps to 404
+- Returns: **two result sets**
+  1. Project row: id, name, description, start_date, deadline, status, created_at, updated_at
+  2. Milestones for the project: id, project_id, name, description, deadline, status, created_at, updated_at (ordered by id)
+- Returns NULL if project not found → API maps to 404
 
 #### `sp_list_milestones(p_project_id INT)`
 - Consumed by: `GET /milestones/` (optional query param project_id)
 - If p_project_id is NULL: returns all milestones
 - If p_project_id provided: filters by project_id
 - Returns ordered by id
+- Also consumed by: `GET /projects/{project_id}/milestones` (if implemented)
 
 #### `sp_get_milestone_by_id(p_milestone_id INT)`
 - Consumed by: `GET /milestones/{milestone_id}`
-- Returns: all milestone columns
-- Returns NULL if not found → API maps to 404
+- Returns: **two result sets**
+  1. Milestone row: id, project_id, name, description, deadline, status, created_at, updated_at
+  2. Tasks for the milestone: id, milestone_id, assignee_id, name, description, priority, status, deadline, created_at, updated_at (ordered by id)
+- Returns NULL if milestone not found → API maps to 404
+- Also consumed by: `GET /projects/{project_id}/milestones/{milestone_id}` (if implemented)
 
 #### `sp_list_tasks(p_milestone_id INT, p_assignee_id INT, p_status VARCHAR(30))`
 - Consumed by: `GET /tasks/` (optional query params)
@@ -154,6 +160,47 @@ integration works. Until an object exists, its endpoint returns HTTP 501.
 
 > **Note**: `GET /reports/tasks/overdue` and `GET /reports/workload` use views (`v_overdue_tasks`, `v_assignee_workload`) instead of stored procedures since they accept no parameters.
 
+---
+
+## Response Schemas (`schemas.py`)
+
+The API uses Pydantic models to shape responses, including nested relationships:
+
+### Project Response Schemas
+
+| Schema | Purpose | Key Fields |
+|---|---|---|
+| `ProjectResponse` | Basic project data (list/create/update) | id, name, description, start_date, deadline, status, created_at, updated_at |
+| `ProjectWithMilestonesResponse` | Project with nested milestones | extends ProjectResponse + `milestones: list[MilestoneResponse]` |
+
+### Milestone Response Schemas
+
+| Schema | Purpose | Key Fields |
+|---|---|---|
+| `MilestoneResponse` | Basic milestone data | id, project_id, name, description, deadline, status, created_at, updated_at |
+| `MilestoneWithTasksResponse` | Milestone with nested tasks | extends MilestoneResponse + `tasks: list[TaskResponse]` |
+
+### Task Response Schema
+
+| Schema | Purpose | Key Fields |
+|---|---|---|
+| `TaskResponse` | Full task data | id, milestone_id, assignee_id, name, description, priority, status, deadline, created_at, updated_at |
+
+### Create/Update Schemas (Input Validation)
+
+| Schema | Endpoint | Notes |
+|---|---|---|
+| `ProjectCreate` | `POST /projects/create` | Validates deadline >= start_date via CHECK constraint |
+| `ProjectUpdate` | `PUT /projects/{id}/update` | All fields optional for partial updates |
+| `ProjectWithMilestoneCreate` | `POST /projects/with-milestone/create` | Nested milestone creation in one transaction |
+| `MilestoneCreate` | `POST /milestones/create` (legacy) | Requires `project_id` in body |
+| `MilestoneCreateNoProject` | `POST /projects/{id}/milestone/create` | `project_id` comes from path parameter |
+| `MilestoneUpdate` | `PUT /milestones/{id}/update` | All fields optional |
+| `TaskCreate` | `POST /milestones/{id}/tasks/create` | Requires `milestone_id` from path |
+| `TaskUpdate` | `PUT /tasks/{id}/update` | All fields optional |
+
+---
+
 ### UPDATE Operations (3) — Full UPDATE (all fields)
 
 #### `sp_update_project(p_project_id INT, p_name VARCHAR(150), p_description TEXT, p_start_date DATE, p_deadline DATE, p_status ENUM)`
@@ -166,6 +213,7 @@ integration works. Until an object exists, its endpoint returns HTTP 501.
 - Consumed by: `PUT /milestones/{milestone_id}`
 - Updates all milestone fields
 - Returns: affected rows; 0 → API maps to 404
+- Also consumed by: `PUT /projects/{project_id}/milestones/{milestone_id}` (if implemented)
 
 #### `sp_update_task(p_task_id INT, p_milestone_id INT, p_assignee_id INT, p_name VARCHAR(150), p_description TEXT, p_priority ENUM, p_deadline DATE, p_status ENUM)`
 - Consumed by: `PUT /tasks/{task_id}`
@@ -184,6 +232,7 @@ integration works. Until an object exists, its endpoint returns HTTP 501.
 - Consumed by: `DELETE /milestones/{milestone_id}`
 - Deletes milestone (cascades to tasks, activity_logs via FK)
 - Returns: affected rows; 0 → API maps to 404
+- Also consumed by: `DELETE /projects/{project_id}/milestones/{milestone_id}` (if implemented)
 
 #### `sp_delete_task(p_task_id INT)`
 - Consumed by: `DELETE /tasks/{task_id}`
@@ -241,6 +290,22 @@ integration works. Until an object exists, its endpoint returns HTTP 501.
 - Student work: demonstrate extraction/modification against this column using
   MySQL JSON functions during evaluation (e.g., reading a single preference
   key). Suggested demo data shape: `{"theme": "dark", "notifications": true}`.
+
+---
+
+## Database Permissions (`sql/08-user-access.sql`)
+
+The `app` database user follows the principle of least privilege:
+
+| Permission | Objects |
+|---|---|
+| `EXECUTE` | All 21 stored procedures |
+| `EXECUTE` | 2 functions (`fn_get_project_progress`, `fn_get_milestone_progress`) |
+| `SELECT` | 3 views (`v_projects`, `v_overdue_tasks`, `v_assignee_workload`) |
+
+**Explicitly revoked** on `TaskManager.*`: `SELECT`, `INSERT`, `UPDATE`, `DELETE`, `CREATE`, `DROP`, `ALTER`, `INDEX`.
+
+This ensures all data access flows through stored procedures, views, and triggers — the `app` user cannot read or write tables directly. The `root` user retains full privileges for administrative tasks.
 
 ---
 

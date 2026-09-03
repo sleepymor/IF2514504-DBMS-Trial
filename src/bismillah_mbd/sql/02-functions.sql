@@ -1,9 +1,6 @@
 USE TaskManager;
 
 DELIMITER //
-
--- Scalar Function: fn_get_project_progress
--- Calculates project completion percentage based on task status
 DROP FUNCTION IF EXISTS fn_get_project_progress//
 CREATE FUNCTION fn_get_project_progress(p_project_id INT)
 RETURNS DECIMAL(5,2)

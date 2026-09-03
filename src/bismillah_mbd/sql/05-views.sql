@@ -1,8 +1,7 @@
 USE TaskManager;
 
--- View: v_projects
+
 -- Consumed by: GET /projects/
--- Returns all projects ordered by id
 CREATE OR REPLACE VIEW v_projects AS
 SELECT id,
        p.name,
@@ -15,10 +14,7 @@ SELECT id,
 FROM projects p
 ORDER BY id;
 
--- View: v_overdue_tasks
 -- Consumed by: GET /reports/tasks/overdue
--- Returns tasks past deadline that are not COMPLETED or CANCELLED
--- Includes project/milestone context, ordered by deadline
 CREATE OR REPLACE VIEW v_overdue_tasks AS
 SELECT t.id AS task_id,
        t.name AS task_name,
@@ -37,11 +33,7 @@ WHERE t.deadline < CURDATE()
   AND t.status NOT IN ('COMPLETED', 'CANCELLED')
 ORDER BY t.deadline;
 
--- View: v_assignee_workload
 -- Consumed by: GET /reports/workload
--- Returns workload per assignee (open tasks + overdue count)
--- Only includes users with open_task_count > 0
--- Ordered by assignee_id
 CREATE OR REPLACE VIEW v_assignee_workload AS
 SELECT u.id AS assignee_id,
        u.username AS assignee_username,

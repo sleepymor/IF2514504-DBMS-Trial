@@ -221,6 +221,47 @@ END;
 
 ---
 
+### 2.6 Multiple Result Sets: Nested Data (NEW)
+
+The updated `sp_get_project_by_id` and `sp_get_milestone_by_id` return **multiple result sets** to provide nested data in a single call:
+
+```sql
+-- sp_get_project_by_id: returns project + its milestones
+CREATE PROCEDURE sp_get_project_by_id(IN p_project_id INT)
+BEGIN
+    -- Result set 1: Project
+    SELECT id, name, description, start_date, deadline, status, created_at, updated_at
+    FROM projects WHERE id = p_project_id;
+    
+    -- Result set 2: Milestones for this project
+    SELECT id, project_id, name, description, deadline, status, created_at, updated_at
+    FROM milestones WHERE project_id = p_project_id ORDER BY id;
+END;
+```
+
+**Python Handling:**
+```python
+cur.callproc("sp_get_project_by_id", (project_id,))
+results = list(cur.stored_results())
+project = results[0].fetchone() if results else None
+milestones = results[1].fetchall() if len(results) > 1 else []
+project["milestones"] = milestones
+```
+
+**Why Not JOIN?**
+| Approach | Pros | Cons |
+|---|---|---|
+| JOIN in procedure | Single result set | Duplicates project columns per milestone row |
+| Multiple result sets | Clean separation, no duplication | Requires `stored_results()` handling |
+
+**Key Points:**
+- `cur.stored_results()` returns iterator of *all* SELECTs in procedure
+- Order matters: first SELECT = first result set
+- Empty result sets are still counted
+- API combines into nested Pydantic models (`ProjectWithMilestonesResponse`)
+
+---
+
 ## 3. Python Integration: Calling Procedures
 
 **File:** `src/bismillah_mbd/routes/*.py`

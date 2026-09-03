@@ -3,41 +3,11 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from mysql.connector import Error as MySQLError, MySQLConnection
-from pydantic import BaseModel, Field
 
 from bismillah_mbd.database import get_db
+from bismillah_mbd.schemas import TaskResponse, TaskUpdate
 
-router = APIRouter(prefix="/tasks", tags=["Tasks"])
-
-
-class TaskCreate(BaseModel):
-    milestone_id: int
-    assignee_id: int | None = None
-    name: str = Field(min_length=1, max_length=150)
-    description: str | None = None
-    priority: Literal["LOW", "MEDIUM", "HIGH", "URGENT"] = "LOW"
-    deadline: date
-
-
-class TaskUpdate(BaseModel):
-    assignee_id: int | None = None
-    name: str | None = Field(default=None, min_length=1, max_length=150)
-    description: str | None = None
-    priority: Literal["LOW", "MEDIUM", "HIGH", "URGENT"] | None = None
-    deadline: date | None = None
-
-
-class TaskResponse(BaseModel):
-    id: int
-    milestone_id: int
-    assignee_id: int | None
-    name: str
-    description: str | None
-    priority: str
-    status: str
-    deadline: date
-    created_at: datetime
-    updated_at: datetime
+router = APIRouter(prefix="/task", tags=["Tasks"])
 
 
 def fetch_task(conn: MySQLConnection, task_id: int) -> dict:
@@ -59,36 +29,6 @@ def fetch_task(conn: MySQLConnection, task_id: int) -> dict:
     if task is None:
         raise HTTPException(status_code=404, detail="Task not found")
     return task
-
-
-@router.post("/", response_model=TaskResponse, status_code=201)
-def create_task(payload: TaskCreate, conn: MySQLConnection = Depends(get_db)):
-    try:
-        with conn.cursor() as cur:
-            args = (
-                payload.milestone_id,
-                payload.assignee_id,
-                payload.name,
-                payload.description,
-                payload.priority,
-                payload.deadline,
-                0,
-            )
-            result = cur.callproc("sp_create_task", args)
-            new_id = result[6]
-        conn.commit()
-    except MySQLError as e:
-        if e.errno == 1452:
-            raise HTTPException(
-                status_code=404, detail="Milestone or assignee not found"
-            ) from e
-        if e.errno == 1305:
-            raise HTTPException(
-                status_code=501,
-                detail="sp_create_task does not exist yet - see src/bismillah_mbd/sql/03-procedures.sql",
-            ) from e
-        raise
-    return fetch_task(conn, new_id)
 
 
 @router.get("/", response_model=list[TaskResponse])
@@ -118,7 +58,7 @@ def get_task(task_id: int, conn: MySQLConnection = Depends(get_db)):
     return fetch_task(conn, task_id)
 
 
-@router.put("/{task_id}", response_model=TaskResponse)
+@router.put("/{task_id}/update", response_model=TaskResponse)
 def update_task(task_id: int, payload: TaskUpdate, conn: MySQLConnection = Depends(get_db)):
     fetch_task(conn, task_id)
     data = payload.model_dump(exclude_unset=True)
@@ -209,7 +149,7 @@ def cancel_task(task_id: int, conn: MySQLConnection = Depends(get_db)):
     return fetch_task(conn, task_id)
 
 
-@router.delete("/{task_id}", status_code=204)
+@router.delete("/{task_id}/destroy", status_code=204)
 def delete_task(task_id: int, conn: MySQLConnection = Depends(get_db)):
     fetch_task(conn, task_id)
     try:
